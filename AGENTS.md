@@ -13,4 +13,6 @@
 - Ship, bullets, and asteroids wrap via `wrap()`; particles do not. `dt` is capped at 0.05s, but ship drag (`DRAG = 0.987`) is applied once per frame, not scaled by `dt`.
 - Asteroid `size` runs 3 → 2 → 1; `POINTS` is indexed by that size (20/50/100), so the largest asteroid is index 3, not 0.
 - UI strings and code comments are Spanish (`NIVEL`, `PUNTAJE`, `ESPACIO PARA REINICIAR`); keep that convention when adding user-visible text.
-- README mentions power-ups and an "estrella fugaz" asteroid, but neither is implemented in `game.js`. Treat the code as the source of truth; update README only alongside a real implementation.
+- Power-up "Velocidad": drops from destroyed asteroids (~12%, max 2 active), is cyan, and sets `ship.speedBoost = 5` on pickup. The multiplier doubles only the position delta in `Ship.update`; `ROT`, `THRUST`, and `DRAG` are unchanged. `explode()`/`Particle` accept an optional `rgb`, defaulting to white.
+- HUD shows `VELOCIDAD x2 ...s`; the ship aura is drawn before the invincibility blink early return in `Ship.draw()`.
+- README still mentions an unimplemented "estrella fugaz" asteroid. Treat the code as the source of truth.
