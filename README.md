@@ -44,3 +44,4 @@ Luego visita `http://localhost:3000`.
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
 - Partículas de explosión al destruir asteroides
 - Power-up **Velocidad**: al destruir asteroides puede aparecer un ítem cian; al recogerlo duplica el desplazamiento de la nave durante 5 segundos (HUD y aura cian)
+- **Estrella fugaz**: con un 35% de probabilidad aparece una por oleada; es ámbar, con estela y se mueve 3 veces más rápido. Desaparece sola a los 5 segundos, otorga el doble de puntos al destruirla y no se fragmenta
