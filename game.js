@@ -12,7 +12,7 @@ const justPressed = {};
 window.addEventListener('keydown', e => {
   justPressed[e.code] = !keys[e.code];
   keys[e.code] = true;
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyC'].includes(e.code))
     e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -37,6 +37,8 @@ const SHOOTING_STAR_CHANCE = 0.35;
 const SHOOTING_STAR_SPEED  = 3;
 const SHOOTING_STAR_TTL    = 5;
 const SHOOTING_STAR_RGB    = '255,190,80';
+
+const SKIN_STORAGE_KEY = 'asteroids.skin';
 
 // ── Bullet ────────────────────────────────────────────────────────────────────
 class Bullet {
@@ -185,6 +187,119 @@ class ShootingStar extends Asteroid {
   }
 }
 
+// ── Máscaras (skins) ───────────────────────────────────────────────────────────
+const SKINS = [
+  {
+    name: 'CLÁSICA',
+    stroke: '#fff',
+    flame: 'rgba(255, 130, 0, 0.85)',
+    draw() {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth   = 1.5;
+      ctx.lineJoin    = 'round';
+      ctx.beginPath();
+      ctx.moveTo( 20,  0);   // nariz
+      ctx.lineTo(-12, -9);   // ala izquierda
+      ctx.lineTo( -7,  0);   // muesca trasera
+      ctx.lineTo(-12,  9);   // ala derecha
+      ctx.closePath();
+      ctx.stroke();
+    },
+  },
+  {
+    name: 'CAZA',
+    stroke: '#7df9ff',
+    flame: 'rgba(90, 200, 255, 0.85)',
+    draw() {
+      ctx.strokeStyle = '#7df9ff';
+      ctx.fillStyle   = 'rgba(125, 249, 255, 0.10)';
+      ctx.lineWidth   = 1.5;
+      ctx.lineJoin    = 'round';
+      ctx.beginPath();
+      ctx.moveTo( 21,   0);   // nariz
+      ctx.lineTo(-10, -11);
+      ctx.lineTo( -5,   0);
+      ctx.lineTo(-10,  11);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo( 6, -3);
+      ctx.lineTo(-3, -3);
+      ctx.moveTo( 6,  3);
+      ctx.lineTo(-3,  3);
+      ctx.stroke();
+    },
+  },
+  {
+    name: 'DELTA',
+    stroke: '#ffb84d',
+    flame: 'rgba(255, 90, 40, 0.85)',
+    draw() {
+      ctx.strokeStyle = '#ffb84d';
+      ctx.lineWidth   = 1.5;
+      ctx.lineJoin    = 'round';
+      ctx.beginPath();
+      ctx.moveTo( 21,   0);   // nariz
+      ctx.lineTo(-12, -10);
+      ctx.lineTo( -4,   0);
+      ctx.lineTo(-12,  10);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo( 2, -5);
+      ctx.lineTo(-6,  0);
+      ctx.lineTo( 2,  5);
+      ctx.stroke();
+    },
+  },
+  {
+    name: 'FANTASMA',
+    stroke: '#c9a7ff',
+    flame: 'rgba(190, 150, 255, 0.8)',
+    draw() {
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = '#c9a7ff';
+      ctx.lineWidth   = 1.5;
+      ctx.lineJoin    = 'round';
+      ctx.beginPath();
+      ctx.moveTo( 20,  0);   // nariz
+      ctx.lineTo(-12, -9);
+      ctx.lineTo( -7,  0);
+      ctx.lineTo(-12,  9);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    },
+  },
+];
+
+function currentSkin() {
+  return SKINS[skinIndex];
+}
+
+function loadSkin() {
+  try {
+    const i = Number(localStorage.getItem(SKIN_STORAGE_KEY));
+    return Number.isInteger(i) && i >= 0 && i < SKINS.length ? i : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function cycleSkin() {
+  skinIndex = (skinIndex + 1) % SKINS.length;
+  try {
+    localStorage.setItem(SKIN_STORAGE_KEY, String(skinIndex));
+  } catch (_) {
+    // Almacenamiento no disponible: el cambio dura solo esta sesión.
+  }
+}
+
+let skinIndex = loadSkin();
+
 // ── Ship ──────────────────────────────────────────────────────────────────────
 class Ship {
   constructor() { this.reset(); }
@@ -258,18 +373,9 @@ class Ship {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth   = 1.5;
-    ctx.lineJoin    = 'round';
 
-    // Silueta clásica: triángulo con muesca trasera
-    ctx.beginPath();
-    ctx.moveTo( 20,  0);   // nariz
-    ctx.lineTo(-12, -9);   // ala izquierda
-    ctx.lineTo( -7,  0);   // muesca trasera
-    ctx.lineTo(-12,  9);   // ala derecha
-    ctx.closePath();
-    ctx.stroke();
+    // Forma y color según la máscara activa
+    currentSkin().draw();
 
     // Llama del propulsor
     if (this.thrusting && Math.random() > 0.35) {
@@ -277,7 +383,8 @@ class Ship {
       ctx.moveTo(-8, -4);
       ctx.lineTo(-8 - rand(6, 14), 0);
       ctx.lineTo(-8,  4);
-      ctx.strokeStyle = 'rgba(255, 130, 0, 0.85)';
+      ctx.strokeStyle = currentSkin().flame;
+      ctx.lineWidth   = 1.5;
       ctx.stroke();
     }
 
@@ -422,6 +529,9 @@ function killShip() {
 
 // ── Update ────────────────────────────────────────────────────────────────────
 function update(dt) {
+  // La máscara se puede cambiar en cualquier estado, una vez por frame
+  if (pressed('KeyC')) cycleSkin();
+
   if (state === 'gameover') {
     if (pressed('Space')) initGame();
     particles.forEach(p => p.update(dt));
@@ -502,7 +612,7 @@ function drawLifeIcon(x, y) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(-Math.PI / 2);
-  ctx.strokeStyle = '#fff';
+  ctx.strokeStyle = currentSkin().stroke;
   ctx.lineWidth   = 1.2;
   ctx.lineJoin    = 'round';
   ctx.beginPath();
@@ -533,6 +643,10 @@ function drawHUD() {
   for (let i = 0; i < lives; i++)
     drawLifeIcon(W - 16 - i * 22, 18);
 
+  ctx.font = '12px monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.textAlign = 'left';
+  ctx.fillText(`NAVE: ${currentSkin().name}   —   C: CAMBIAR`, 14, H - 14);
 }
 
 function drawOverlay(title, sub) {
