@@ -29,6 +29,7 @@ Luego visita `http://localhost:3000`.
 | `←` `→`   | Rotar nave |
 | `↑`       | Propulsar  |
 | `Espacio` | Disparar   |
+| `C`       | Cambiar máscara de la nave |
 
 ## Puntuación
 
@@ -47,3 +48,4 @@ Luego visita `http://localhost:3000`.
 - Power-up **Escudo**: al destruir asteroides puede aparecer un ítem azul; al recogerlo protege la nave durante 6 segundos o hasta absorber un impacto de asteroide (lo que ocurra primero). El asteroide rebota y sigue en juego (HUD y aura azules)
 - Power-up **Triple disparo**: un ítem magenta con la misma probabilidad de aparición; durante 5 segundos cada pulsación lanza 3 balas en abanico (HUD y aura magenta). Se puede combinar con Velocidad y Escudo
 - **Estrella fugaz**: con un 35% de probabilidad aparece una por oleada; es ámbar, con estela y se mueve 3 veces más rápido. Desaparece sola a los 5 segundos, otorga el doble de puntos al destruirla y no se fragmenta
+- **Máscaras**: 4 apariencias para la nave (clásica, caza, delta y fantasma). Se cambian con `C`, son solo cosméticas y se guardan entre recargas
