@@ -29,9 +29,12 @@ const dist  = (a, b)   => Math.hypot(a.x - b.x, a.y - b.y);
 const rand  = (min, max) => min + Math.random() * (max - min);
 const randInt = (min, max) => Math.floor(rand(min, max + 1));
 
-const POWERUP_RGB       = '95,255,255';
-const SPEED_DROP_CHANCE = 0.12;
-const MAX_POWERUPS      = 2;
+const POWERUP_RGB        = '95,255,255';
+const SHIELD_RGB         = '130,200,255';
+const SPEED_DROP_CHANCE  = 0.12;
+const SHIELD_DROP_CHANCE = 0.12;
+const MAX_POWERUPS       = 2;
+const SHIELD_DURATION    = 6;
 
 const TRIPLE_RGB         = '255,120,255';
 const TRIPLE_DROP_CHANCE = 0.12;
@@ -206,6 +209,7 @@ class Ship {
     this.shootCooldown = 0;
     this.speedBoost    = 0;
     this.tripleShot    = 0;
+    this.shield        = 0;
     this.dead          = false;
   }
 
@@ -217,6 +221,7 @@ class Ship {
 
     const boost = this.speedBoost > 0 ? 2 : 1;
     if (this.speedBoost > 0) this.speedBoost = Math.max(0, this.speedBoost - dt);
+    if (this.shield     > 0) this.shield     = Math.max(0, this.shield - dt);
 
     const ROT   = 3.5;   // rad/s
     const THRUST = 260;  // px/s²
@@ -269,6 +274,17 @@ class Ship {
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radius + (this.speedBoost > 0 ? 12 : 7), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (this.shield > 0) {
+      const alpha = Math.min(1, this.shield / 1.5);
+      ctx.save();
+      ctx.strokeStyle = `rgba(${SHIELD_RGB},${alpha.toFixed(2)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + (this.tripleShot > 0 ? 18 : 10), 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -339,13 +355,13 @@ class Particle {
   }
 }
 
-// ── Power-ups: Velocidad y Triple disparo ─────────────────────────────────────
+// ── Power-ups: Velocidad, Triple disparo y Escudo ─────────────────────────────
 class PowerUp {
   constructor(x, y, kind = 'speed') {
     this.x = x;
     this.y = y;
     this.kind = kind;
-    this.rgb = kind === 'triple' ? TRIPLE_RGB : POWERUP_RGB;
+    this.rgb = kind === 'triple' ? TRIPLE_RGB : kind === 'shield' ? SHIELD_RGB : POWERUP_RGB;
     const angle = rand(0, Math.PI * 2);
     const speed = rand(35, 65);
     this.vx = Math.cos(angle) * speed;
@@ -378,6 +394,11 @@ class PowerUp {
       ctx.moveTo(0, 6); ctx.lineTo(-6, -6);
       ctx.moveTo(0, 6); ctx.lineTo( 0, -8);
       ctx.moveTo(0, 6); ctx.lineTo( 6, -6);
+    } else if (this.kind === 'shield') {
+      // Silueta de escudo
+      ctx.moveTo(-6, -4); ctx.lineTo(0, -8); ctx.lineTo(6, -4);
+      ctx.lineTo(6, 2);   ctx.lineTo(0, 9);  ctx.lineTo(-6, 2);
+      ctx.closePath();
     } else {
       ctx.moveTo(-6, -5); ctx.lineTo(0, 0); ctx.lineTo(-6, 5);
       ctx.moveTo( 1, -5); ctx.lineTo(7, 0); ctx.lineTo( 1, 5);
@@ -394,10 +415,15 @@ let state;      // 'playing' | 'dead' | 'gameover'
 let deadTimer;
 
 function maybeSpawnPowerUp(x, y) {
-  if (Math.random() < SPEED_DROP_CHANCE && powerups.length < MAX_POWERUPS)
+  if (powerups.length >= MAX_POWERUPS) return;
+  const roll = Math.random();
+  if (roll < SPEED_DROP_CHANCE) {
     powerups.push(new PowerUp(x, y, 'speed'));
-  if (Math.random() < TRIPLE_DROP_CHANCE && powerups.length < MAX_POWERUPS)
+  } else if (roll < SPEED_DROP_CHANCE + SHIELD_DROP_CHANCE) {
+    powerups.push(new PowerUp(x, y, 'shield'));
+  } else if (roll < SPEED_DROP_CHANCE + SHIELD_DROP_CHANCE + TRIPLE_DROP_CHANCE) {
     powerups.push(new PowerUp(x, y, 'triple'));
+  }
 }
 
 function spawnAsteroids(count) {
@@ -509,8 +535,13 @@ function update(dt) {
   for (const p of powerups) {
     if (!p.dead && dist(ship, p) < ship.radius + p.radius) {
       p.dead = true;
-      if (p.kind === 'triple') ship.tripleShot = TRIPLE_DURATION;
-      else ship.speedBoost = 5;
+      if (p.kind === 'triple') {
+        ship.tripleShot = TRIPLE_DURATION;
+      } else if (p.kind === 'shield') {
+        ship.shield = SHIELD_DURATION;
+      } else {
+        ship.speedBoost = 5;
+      }
       explode(p.x, p.y, 8, p.rgb);
     }
   }
@@ -519,10 +550,24 @@ function update(dt) {
   // Nave vs asteroide
   if (ship.invincible <= 0) {
     for (const a of asteroids) {
-      if (dist(ship, a) < ship.radius + a.radius * 0.82) {
+      if (a.dead || dist(ship, a) >= ship.radius + a.radius * 0.82) continue;
+
+      if (ship.shield > 0) {
+        // El escudo absorbe el golpe: el asteroide rebota y sigue en juego
+        const dx = a.x - ship.x;
+        const dy = a.y - ship.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const separation = ship.radius + a.radius * 0.82 + 2;
+        a.vx *= -1;
+        a.vy *= -1;
+        a.x = wrap(ship.x + (dx / len) * separation, W);
+        a.y = wrap(ship.y + (dy / len) * separation, H);
+        ship.shield = 0;
+        explode(a.x, a.y, 10, SHIELD_RGB);
+      } else {
         killShip();
-        break;
       }
+      break;
     }
   }
 
@@ -559,9 +604,14 @@ function drawHUD() {
     ctx.fillText(`VELOCIDAD x2  ${ship.speedBoost.toFixed(1)}s`, 14, 44);
     ctx.fillStyle = '#fff';
   }
+  if (ship.shield > 0) {
+    ctx.fillStyle = `rgb(${SHIELD_RGB})`;
+    ctx.fillText(`ESCUDO  ${ship.shield.toFixed(1)}s`, 14, 62);
+    ctx.fillStyle = '#fff';
+  }
   if (ship.tripleShot > 0) {
     ctx.fillStyle = `rgb(${TRIPLE_RGB})`;
-    ctx.fillText(`TRIPLE x3  ${ship.tripleShot.toFixed(1)}s`, 14, 62);
+    ctx.fillText(`TRIPLE x3  ${ship.tripleShot.toFixed(1)}s`, 14, 80);
     ctx.fillStyle = '#fff';
   }
 
