@@ -1,0 +1,36 @@
+name: opencode-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: opencode-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event.pull_request.head.repo.fork == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Instalar OpenCode
+        run: npm install -g @opencode/cli
+
+      - name: Ejecutar OpenCode
+        run: opencode run --standalone --auto --archived --model anthropic/claude-sonnet-5-5 "$PROMPT"
+        env:
+          PROMPT: |
+            Revisá este pull request (#${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}) buscando errores, regresiones y problemas de calidad.
+            Publicá los hallazgos en el PR con `gh pr comment`. Si no hay problemas, indicá que la revisión pasó correctamente.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
