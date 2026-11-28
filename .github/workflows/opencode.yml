@@ -30,17 +30,17 @@ jobs:
 
       - name: Verificar credenciales
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::error::Falta el secreto ANTHROPIC_API_KEY en el repositorio"
+          if [ -z "$OPENCODE_API_KEY" ]; then
+            echo "::error::Falta el secreto OPENCODE_API_KEY en el repositorio"
             exit 1
           fi
 
       - name: Ejecutar OpenCode
-        run: opencode run --standalone --auto --archived --print-logs --model anthropic/claude-sonnet-5-5 "$PROMPT"
+        run: opencode run --standalone --auto --archived --print-logs --model opencode-go/kimi-k3 "$PROMPT"
         env:
           PROMPT: ${{ github.event.comment.body }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
